@@ -1,0 +1,24 @@
+{
+  "name": "Pudo Academy - Sổ Tay Kỹ Thuật Điện Lạnh",
+  "short_name": "Pudo Academy",
+  "description": "Cẩm nang tra cứu mã lỗi Inverter, công thức kỹ thuật và sổ tay hiện trường cho thợ điện lạnh.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0a192f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo/pudo_emblem_round.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["education", "utilities", "productivity"]
+}
