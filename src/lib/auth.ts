@@ -83,16 +83,37 @@ export function verifyJwt(token: string): JwtSessionPayload | null {
     const [headerB64, payloadB64, signature] = parts;
     const dataToSign = `${headerB64}.${payloadB64}`;
 
+    const primarySecret = getSecretKey();
+    let isSigValid = false;
+
     const expectedSignature = crypto
-      .createHmac("sha256", getSecretKey())
+      .createHmac("sha256", primarySecret)
       .update(dataToSign)
       .digest("base64url");
 
-    if (signature.length !== expectedSignature.length) return null;
+    if (
+      signature.length === expectedSignature.length &&
+      crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))
+    ) {
+      isSigValid = true;
+    }
 
-    const sigBuf = Buffer.from(signature);
-    const expBuf = Buffer.from(expectedSignature);
-    if (!crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+    // Support fallback secret during key rotation
+    const fallbackSecret = process.env.JWT_FALLBACK_SECRET;
+    if (!isSigValid && fallbackSecret) {
+      const fallbackSig = crypto
+        .createHmac("sha256", fallbackSecret)
+        .update(dataToSign)
+        .digest("base64url");
+      if (
+        signature.length === fallbackSig.length &&
+        crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(fallbackSig))
+      ) {
+        isSigValid = true;
+      }
+    }
+
+    if (!isSigValid) return null;
 
     const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
     const now = Math.floor(Date.now() / 1000);
