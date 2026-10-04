@@ -127,7 +127,8 @@ export function useStudentProfile() {
     password: string,
     name: string,
     targetCollege?: string,
-    academicYear?: string
+    academicYear?: string,
+    rememberMe = true
   ): Promise<{ success: boolean; message?: string }> => {
     setIsAuthenticating(true);
     setAuthError(null);
@@ -142,6 +143,7 @@ export function useStudentProfile() {
           name,
           targetCollege: targetCollege || "Trường Cao đẳng Kỹ thuật Công nghệ",
           academicYear: academicYear || "K2026 - K2029 (Hệ chính quy 3 năm)",
+          rememberMe,
         }),
       });
 
@@ -184,7 +186,8 @@ export function useStudentProfile() {
   // Login student with Academy Backend
   const loginWithNeon = async (
     email: string,
-    password: string
+    password: string,
+    rememberMe = true
   ): Promise<{ success: boolean; message?: string }> => {
     setIsAuthenticating(true);
     setAuthError(null);
@@ -193,7 +196,7 @@ export function useStudentProfile() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include", // Receives HTTPOnly Cookie
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, rememberMe }),
       });
 
       const data = await res.json();

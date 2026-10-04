@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { email, password } = body;
+    const { email, password, rememberMe } = body;
 
     if (!email || !password || typeof email !== "string" || typeof password !== "string") {
       return NextResponse.json(
@@ -165,9 +165,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Set secure HTTPOnly cookie
+    // Set secure HTTPOnly cookie (30 days if rememberMe, otherwise 1 day)
+    const maxAge = rememberMe !== false ? 30 * 24 * 60 * 60 : 24 * 60 * 60;
     response.cookies.set({
       ...AUTH_COOKIE_OPTIONS,
+      maxAge,
       name: AUTH_COOKIE_NAME,
       value: jwtToken,
     });

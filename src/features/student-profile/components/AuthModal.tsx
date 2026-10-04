@@ -10,7 +10,10 @@ import {
   Profile as ProfileIcon,
   ArrowRight,
 } from "reicon-react";
+import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const REMEMBER_KEY = "pudo_remember_login";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -21,11 +24,15 @@ interface AuthModalProps {
   onRegisterWithNeon: (
     email: string,
     password: string,
-    name: string
+    name: string,
+    targetCollege?: string,
+    academicYear?: string,
+    rememberMe?: boolean
   ) => Promise<{ success: boolean; message?: string }>;
   onLoginWithNeon: (
     email: string,
-    password: string
+    password: string,
+    rememberMe?: boolean
   ) => Promise<{ success: boolean; message?: string }>;
 }
 
@@ -40,10 +47,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<"LOGIN" | "REGISTER">(initialTab);
 
-  // Form fields
-  const [email, setEmail] = useState("");
+  // Form fields with lazy initializers
+  const [email, setEmail] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const saved = localStorage.getItem(REMEMBER_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.email) return parsed.email;
+      }
+    } catch {}
+    return "";
+  });
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -57,6 +76,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setActiveTab(initialTab);
       setErrorMessage(null);
       setSuccessMessage(null);
+      setShowPassword(false);
     }
   }
 
@@ -68,10 +88,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMessage(null);
     setIsLoading(true);
 
-    const res = await onLoginWithNeon(email, password);
+    const res = await onLoginWithNeon(email, password, rememberMe);
     setIsLoading(false);
 
     if (res.success) {
+      // Save or remove remembered email
+      try {
+        if (rememberMe && email.trim()) {
+          localStorage.setItem(
+            REMEMBER_KEY,
+            JSON.stringify({ email: email.trim(), remember: true })
+          );
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
+      } catch {}
+
       setSuccessMessage("Đăng nhập thành công! Đang chuyển hướng vào Dashboard...");
       setTimeout(() => {
         onClose();
@@ -88,10 +120,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMessage(null);
     setIsLoading(true);
 
-    const res = await onRegisterWithNeon(email, password, fullName || "Học viên Pudo");
+    const res = await onRegisterWithNeon(
+      email,
+      password,
+      fullName || "Học viên Pudo",
+      undefined,
+      undefined,
+      rememberMe
+    );
     setIsLoading(false);
 
     if (res.success) {
+      try {
+        if (rememberMe && email.trim()) {
+          localStorage.setItem(
+            REMEMBER_KEY,
+            JSON.stringify({ email: email.trim(), remember: true })
+          );
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
+      } catch {}
+
       setSuccessMessage("Tạo tài khoản học viên thành công! Đang mở Dashboard...");
       setTimeout(() => {
         onClose();
@@ -205,18 +255,69 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="font-mono text-xs font-bold text-neutral-700 block flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5" />
-                <span>MẬT KHẨU:</span>
+              <div className="flex items-center justify-between">
+                <label className="font-mono text-xs font-bold text-neutral-700 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>MẬT KHẨU:</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="font-mono text-[11px] text-blue-900 hover:text-blue-950 flex items-center gap-1 cursor-pointer focus:outline-none"
+                  title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                  {showPassword ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5 text-blue-900" />
+                      <span>Ẩn mật khẩu</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5 text-neutral-600" />
+                      <span>Hiện mật khẩu</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="h-9 text-xs pr-10 font-mono"
+                  placeholder="Nhập mật khẩu..."
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-900 p-0.5 cursor-pointer focus:outline-none"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4 text-blue-950" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-neutral-500" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center justify-between pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-neutral-700 hover:text-neutral-950 font-mono text-[11px]">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded-none border border-neutral-400 text-blue-950 focus:ring-0 cursor-pointer accent-blue-950"
+                />
+                <span>Ghi nhớ đăng nhập trên thiết bị này</span>
               </label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="h-9 text-xs"
-                placeholder="Nhập mật khẩu..."
-              />
+              <span className="text-[10px] font-mono text-neutral-400">
+                Cookie HTTPOnly
+              </span>
             </div>
 
             <div className="pt-2 flex flex-col gap-2">
@@ -283,19 +384,70 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="font-mono text-xs font-bold text-neutral-700 block flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5" />
-                <span>MẬT KHẨU (TỐI THIỂU 6 KÝ TỰ):</span>
+              <div className="flex items-center justify-between">
+                <label className="font-mono text-xs font-bold text-neutral-700 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>MẬT KHẨU (TỐI THIỂU 6 KÝ TỰ):</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="font-mono text-[11px] text-blue-900 hover:text-blue-950 flex items-center gap-1 cursor-pointer focus:outline-none"
+                  title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                  {showPassword ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5 text-blue-900" />
+                      <span>Ẩn mật khẩu</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5 text-neutral-600" />
+                      <span>Hiện mật khẩu</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="h-9 text-xs pr-10 font-mono"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-900 p-0.5 cursor-pointer focus:outline-none"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4 text-blue-950" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-neutral-500" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center justify-between pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-neutral-700 hover:text-neutral-950 font-mono text-[11px]">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded-none border border-neutral-400 text-blue-950 focus:ring-0 cursor-pointer accent-blue-950"
+                />
+                <span>Ghi nhớ đăng nhập trên thiết bị này</span>
               </label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="h-9 text-xs"
-                placeholder="••••••••"
-              />
+              <span className="text-[10px] font-mono text-neutral-400">
+                Cookie HTTPOnly
+              </span>
             </div>
 
             <div className="pt-2 flex flex-col gap-2">

@@ -1,12 +1,24 @@
 import crypto from "crypto";
 import type { NextRequest } from "next/server";
 
-// Standard JWT Secret provided by user or environment
+// Secure JWT Secret loaded strictly from environment variable
 export const JWT_SECRET =
   process.env.JWT_SECRET ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30";
+  (process.env.NODE_ENV === "production"
+    ? ""
+    : "pudo-academy-dev-secret-key-2026");
 
-const SECRET_SALT = process.env.AUTH_SECRET || "pudo-refrigeration-academy-auth-secret-salt-2026";
+const getSecretKey = (): string => {
+  if (!JWT_SECRET) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Missing JWT_SECRET environment variable in production.");
+    }
+    return "pudo-academy-dev-secret-key-2026";
+  }
+  return JWT_SECRET;
+};
+
+const SECRET_SALT = process.env.AUTH_SECRET || "pudo-academy-auth-secret-salt-2026";
 
 export const AUTH_COOKIE_NAME = "pudo_auth_token";
 
@@ -53,7 +65,7 @@ export function signJwt(
   const dataToSign = `${headerB64}.${payloadB64}`;
 
   const signature = crypto
-    .createHmac("sha256", JWT_SECRET)
+    .createHmac("sha256", getSecretKey())
     .update(dataToSign)
     .digest("base64url");
 
@@ -72,7 +84,7 @@ export function verifyJwt(token: string): JwtSessionPayload | null {
     const dataToSign = `${headerB64}.${payloadB64}`;
 
     const expectedSignature = crypto
-      .createHmac("sha256", JWT_SECRET)
+      .createHmac("sha256", getSecretKey())
       .update(dataToSign)
       .digest("base64url");
 
